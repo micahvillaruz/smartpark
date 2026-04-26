@@ -89,6 +89,26 @@ public class ParkingService {
         return ParkingSessionResponse.from(session);
     }
 
+    @Transactional
+    public ParkingSessionResponse autoCheckOut(ParkingSession session) {
+        LocalDateTime checkOutTime = LocalDateTime.now();
+        BigDecimal cost = calculateCost(session.getCheckInTime(), checkOutTime,
+                session.getParkingLot().getCostPerMinute());
+
+        session.setCheckOutTime(checkOutTime);
+        session.setCost(cost);
+        session.setActive(false);
+        session.setAutoCheckedOut(true);
+
+        ParkingLot lot = session.getParkingLot();
+        lot.setOccupiedSpaces(Math.max(0, lot.getOccupiedSpaces() - 1));
+
+        parkingSessionRepository.save(session);
+        parkingLotRepository.save(lot);
+
+        return ParkingSessionResponse.from(session);
+    }
+
     @Transactional(readOnly = true)
     public List<ParkingSessionResponse> getActiveSessionsByLot(String lotId) {
         if (!parkingLotRepository.existsById(lotId)) {
